@@ -1,0 +1,9 @@
+spring:
+  labzen:
+    env:
+      external:
+        uri: "C:\\Dean\\working\\labzen\\configs\\spring\\crypto"
+        password: "q68HAItfjWbJIBPk"
+        active-profiles:
+          - devel
+          - media

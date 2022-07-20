@@ -1,0 +1,2 @@
+org.springframework.boot.env.EnvironmentPostProcessor=cn.labzen.spring.env.ExternalPropertySourcesLoader
+org.springframework.context.ApplicationListener=cn.labzen.spring.env.ExternalPropertySourcesInfoPrinter
