@@ -1,6 +1,5 @@
 package cn.labzen.spring.configuration.properties;
 
-import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.List;
@@ -11,7 +10,6 @@ import static cn.labzen.spring.configuration.ConfigurationNamespaces.PREFIX_EXTE
  * 配置如何加载外部配置属性，目标为YAML文件
  */
 @SuppressWarnings("ConfigurationProperties")
-@Data
 @ConfigurationProperties(prefix = PREFIX_EXTERNAL_CONFIGURATION_PROPERTIES)
 public class ExternalPropertySourceProperties {
 
@@ -27,4 +25,28 @@ public class ExternalPropertySourceProperties {
    * 激活的Profile，也可通过环境变量传入，例如：' mvn -jar xxx.jar --spring.profiles.active=devel '
    */
   private List<String> activeProfiles;
+
+  public String getUri() {
+    return uri;
+  }
+
+  public void setUri(String uri) {
+    this.uri = uri;
+  }
+
+  public String getPassword() {
+    return password;
+  }
+
+  public void setPassword(String password) {
+    this.password = password;
+  }
+
+  public List<String> getActiveProfiles() {
+    return activeProfiles;
+  }
+
+  public void setActiveProfiles(List<String> activeProfiles) {
+    this.activeProfiles = activeProfiles;
+  }
 }

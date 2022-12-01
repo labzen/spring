@@ -1,15 +1,7 @@
 package cn.labzen.spring.env;
 
-import cn.labzen.cells.algorithm.crypto.Ciphers;
-import cn.labzen.cells.algorithm.crypto.cipher.SymmetricalCipher;
-import cn.labzen.cells.core.bean.StrictPair;
-import cn.labzen.cells.core.definition.Constants;
-import cn.labzen.cells.core.utils.Strings;
 import cn.labzen.spring.configuration.properties.ExternalPropertySourceProperties;
 import cn.labzen.spring.exception.SpringConfigurationException;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import lombok.SneakyThrows;
 import org.springframework.beans.factory.config.YamlProcessor;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
@@ -17,6 +9,7 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.PropertySource;
 import org.springframework.util.StringUtils;
 import org.yaml.snakeyaml.Yaml;
+import oshi.util.tuples.Pair;
 
 import javax.net.ssl.*;
 import java.io.File;
@@ -24,6 +17,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -33,9 +28,9 @@ import static cn.labzen.spring.configuration.ConfigurationNamespaces.PREFIX_EXTE
 public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
 
   private boolean isURL;
+  private String cryptoPassword;
   private boolean isCryptoSource;
   private String extension;
-  private SymmetricalCipher cipher;
 
   @Override
   public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
@@ -44,11 +39,11 @@ public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
       return;
     }
 
-    List<StrictPair<String, PropertySource<?>>> propertySources = loadExternalPropertySources(ecp);
+    List<Pair<String, PropertySource<?>>> propertySources = loadExternalPropertySources(ecp);
 
     propertySources.forEach(pair -> {
-      environment.addActiveProfile(pair.getFirst());
-      environment.getPropertySources().addLast(pair.getSecond());
+      environment.addActiveProfile(pair.getA());
+      environment.getPropertySources().addLast(pair.getB());
     });
   }
 
@@ -57,11 +52,10 @@ public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
     if (uri == null) {
       return null;
     }
-    String password = environment.getProperty(PREFIX_EXTERNAL_CONFIGURATION_PROPERTIES + ".password");
+    cryptoPassword = environment.getProperty(PREFIX_EXTERNAL_CONFIGURATION_PROPERTIES + ".password");
 
-    Set<String> profiles = Sets.newLinkedHashSet();
     String[] activeProfiles = environment.getActiveProfiles();
-    profiles.addAll(Arrays.asList(activeProfiles));
+    Set<String> profiles = new LinkedHashSet<>(Arrays.asList(activeProfiles));
     int profileIndex = 0;
     while (true) {
       String key = PREFIX_EXTERNAL_CONFIGURATION_PROPERTIES + ".active-profiles[" + profileIndex + "]";
@@ -75,30 +69,26 @@ public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
 
     ExternalPropertySourceProperties ecp = new ExternalPropertySourceProperties();
     ecp.setUri(uri);
-    ecp.setPassword(password);
-    ecp.setActiveProfiles(Lists.newArrayList(profiles));
+    ecp.setPassword(cryptoPassword);
+    ecp.setActiveProfiles(new ArrayList<>(profiles));
     return ecp;
   }
 
-  private List<StrictPair<String, PropertySource<?>>> loadExternalPropertySources(ExternalPropertySourceProperties ecp) {
+  private List<Pair<String, PropertySource<?>>> loadExternalPropertySources(ExternalPropertySourceProperties ecp) {
+    String uri = ecp.getUri().toLowerCase();
     //noinspection HttpUrlsUsage
-    isURL = Strings.startsWith(ecp.getUri(), false, "http://", "https://");
-    isCryptoSource = Strings.isNotBlank(ecp.getPassword());
+    isURL = uri.startsWith("http://") || uri.startsWith("https://");
+
+    isCryptoSource = cryptoPassword != null && !cryptoPassword.isBlank();
     if (isCryptoSource) {
       extension = ".cfg";
     } else {
       extension = ".yml";
     }
 
-    if (isCryptoSource) {
-      byte[] iv = new byte[16];
-      Arrays.fill(iv, (byte) 0);
-      cipher = Ciphers.symmetrical().withKey(ecp.getPassword()).withIVParameter(iv);
-    }
-
     return ecp.getActiveProfiles()
               .stream()
-              .map(profileName -> new StrictPair<String, PropertySource<?>>(profileName,
+              .map(profileName -> new Pair<String, PropertySource<?>>(profileName,
                   loadExternalPropertySources(ecp.getUri(), profileName)))
               .collect(Collectors.toList());
   }
@@ -115,13 +105,19 @@ public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
     if (isURL) {
       propertiesContent = loadSourceContentFromURL(uri + "/" + fileName);
     } else {
-      propertiesContent = loadSourceContentFromLocal(uri + Constants.SYSTEM_FILE_SEPARATOR + fileName);
+      propertiesContent = loadSourceContentFromLocal(uri + File.separator + fileName);
     }
 
     String contentString;
     if (isCryptoSource) {
-      byte[] decryptedContent = cipher.decrypt(propertiesContent);
-      contentString = new String(decryptedContent);
+      Crypto crypto = new Crypto(cryptoPassword);
+      try {
+        byte[] decryptedContent = crypto.decrypt(propertiesContent);
+        contentString = new String(decryptedContent);
+      } catch (RuntimeException e) {
+        throw new SpringConfigurationException(e, "外部加密配置文件解密异常");
+      }
+      //cipher = Ciphers.symmetrical().withKey(ecp.getPassword()).withIVParameter(iv);
     } else {
       contentString = new String(propertiesContent);
     }
@@ -236,8 +232,7 @@ public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
   /**
    * todo 临时方案
    */
-  @SneakyThrows
-  private void ignoreSSL() {
+  private void ignoreSSL() throws NoSuchAlgorithmException, KeyManagementException {
     HostnameVerifier hv = (hostname, session) -> true;
     TrustManager[] trustAllCerts = new TrustManager[]{new IgnoringTrustManager()};
     SSLContext context = SSLContext.getInstance("SSL");

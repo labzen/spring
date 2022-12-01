@@ -1,6 +1,6 @@
 package cn.labzen.spring.exception;
 
-import cn.labzen.cells.core.exception.LabzenRuntimeException;
+import cn.labzen.meta.exception.LabzenRuntimeException;
 import org.jetbrains.annotations.NotNull;
 
 public class SpringConfigurationException extends LabzenRuntimeException {

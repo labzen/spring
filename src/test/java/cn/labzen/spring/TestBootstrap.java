@@ -22,5 +22,8 @@ public class TestBootstrap implements EnvironmentAware {
   @Override
   public void setEnvironment(Environment environment) {
     this.environment = environment;
+
+    System.out.println("加载的外部配置项 server.port: " + environment.getProperty("server.port"));
+    System.out.println("加载的外部配置项 server.shutdown: " + environment.getProperty("server.shutdown"));
   }
 }
