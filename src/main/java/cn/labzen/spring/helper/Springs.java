@@ -30,11 +30,11 @@ public class Springs {
     Springs.environment = applicationContext.getEnvironment();
   }
 
-  public ClassLoader getSpringClassLoader() {
+  public static ClassLoader getSpringClassLoader() {
     return applicationContext.getClassLoader();
   }
 
-  public <T> Optional<T> bean(Class<T> type) {
+  public static <T> Optional<T> bean(Class<T> type) {
     try {
       T bean = applicationContext.getBean(type);
       return Optional.of(bean);
@@ -43,7 +43,7 @@ public class Springs {
     }
   }
 
-  public <T> Map<String, T> beans(Class<T> type) {
+  public static <T> Map<String, T> beans(Class<T> type) {
     try {
       return applicationContext.getBeansOfType(type);
     } catch (BeansException e) {
@@ -51,39 +51,39 @@ public class Springs {
     }
   }
 
-  public <T> List<String> beanNames(Class<T> type) {
+  public static <T> List<String> beanNames(Class<T> type) {
     return Arrays.asList(applicationContext.getBeanNamesForType(type));
   }
 
-  public <T> T register(Class<T> type) {
+  public static <T> T register(Class<T> type) {
     Object bean = listableBeanFactory.createBean(type, AbstractBeanDefinition.AUTOWIRE_BY_TYPE, true);
     listableBeanFactory.registerSingleton(type.getSimpleName(), bean);
     //noinspection unchecked
     return (T) bean;
   }
 
-  public <T> T getOrCreate(Class<T> type) {
+  public static <T> T getOrCreate(Class<T> type) {
     Optional<T> bean = bean(type);
     return bean.orElseGet(() -> register(type));
   }
 
-  public List<String> activatedProfiles() {
+  public static List<String> activatedProfiles() {
     return Arrays.asList(environment.getActiveProfiles());
   }
 
-  public boolean isProfileActivated(String name) {
+  public static boolean isProfileActivated(String name) {
     return activatedProfiles().contains(name);
   }
 
-  public String environmentProperty(String name, String defaultValue) {
+  public static String environmentProperty(String name, String defaultValue) {
     return environment.getProperty(name, defaultValue);
   }
 
-  public String environmentProperty(String name) {
+  public static String environmentProperty(String name) {
     return environmentProperty(name, null);
   }
 
-  public Set<Class<?>> scanClasses(String pkg, Class<?> type, Class<Annotation>... annotationClasses) {
+  public static Set<Class<?>> scanClasses(String pkg, Class<?> type, Class<Annotation>... annotationClasses) {
     return scanClasses(pkg, provider -> {
       provider.addIncludeFilter(new AssignableTypeFilter(type));
       for (Class<Annotation> annotationClass : annotationClasses) {
@@ -92,7 +92,7 @@ public class Springs {
     });
   }
 
-  public Set<Class<?>> scanClasses(String pkg, Consumer<ClassPathScanningCandidateComponentProvider> consumer) {
+  public static Set<Class<?>> scanClasses(String pkg, Consumer<ClassPathScanningCandidateComponentProvider> consumer) {
     ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(false);
     provider.setEnvironment(environment);
     provider.setResourceLoader(applicationContext);
