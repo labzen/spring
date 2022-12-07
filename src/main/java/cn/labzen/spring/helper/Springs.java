@@ -1,13 +1,16 @@
 package cn.labzen.spring.helper;
 
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.core.type.filter.AssignableTypeFilter;
+import org.springframework.lang.NonNull;
 import org.springframework.util.ClassUtils;
 
 import java.lang.annotation.Annotation;
@@ -28,6 +31,10 @@ public class Springs {
     Springs.applicationContext = applicationContext;
     Springs.listableBeanFactory = applicationContext.getBeanFactory();
     Springs.environment = applicationContext.getEnvironment();
+  }
+
+  public static ApplicationContext getApplicationContext() {
+    return applicationContext;
   }
 
   public static ClassLoader getSpringClassLoader() {
@@ -60,6 +67,16 @@ public class Springs {
     listableBeanFactory.registerSingleton(type.getSimpleName(), bean);
     //noinspection unchecked
     return (T) bean;
+  }
+
+  public static <T> T register(@NonNull T bean) {
+    return register(bean, bean.getClass().getSimpleName());
+  }
+
+  public static <T> T register(@NonNull T bean, String name) {
+    listableBeanFactory.autowireBeanProperties(bean, AutowireCapableBeanFactory.AUTOWIRE_BY_TYPE, true);
+    listableBeanFactory.registerSingleton(name, bean);
+    return bean;
   }
 
   public static <T> T getOrCreate(Class<T> type) {
