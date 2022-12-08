@@ -1,9 +1,9 @@
 package cn.labzen.spring.helper;
 
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
@@ -14,6 +14,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.util.ClassUtils;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -33,74 +34,201 @@ public class Springs {
     Springs.environment = applicationContext.getEnvironment();
   }
 
+  /**
+   * 获取 {@link ApplicationContext}
+   */
   public static ApplicationContext getApplicationContext() {
     return applicationContext;
   }
 
+  /**
+   * 获取 {@link ListableBeanFactory}
+   */
+  public static ListableBeanFactory getListableBeanFactory() {
+    return listableBeanFactory;
+  }
+
+  /**
+   * 获取 Spring {@link ApplicationContext} 的 {@link ClassLoader}
+   */
   public static ClassLoader getSpringClassLoader() {
     return applicationContext.getClassLoader();
   }
 
+  /**
+   * 通过类获取 Spring Bean
+   */
   public static <T> Optional<T> bean(Class<T> type) {
     try {
-      T bean = applicationContext.getBean(type);
+      T bean = listableBeanFactory.getBean(type);
       return Optional.of(bean);
     } catch (BeansException e) {
       return Optional.empty();
     }
   }
 
+  /**
+   * 通过 Bean name 获取 Spring Bean
+   */
+  public static Optional<?> bean(String name) {
+    try {
+      Object bean = listableBeanFactory.getBean(name);
+      return Optional.of(bean);
+    } catch (BeansException e) {
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * 通过类以及 Bean name 精确获取 Spring Bean
+   */
+  public static <T> Optional<T> bean(String name, Class<T> type) {
+    try {
+      T bean = listableBeanFactory.getBean(name, type);
+      return Optional.of(bean);
+    } catch (BeansException e) {
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * 通过类获取注册的所有 Spring Bean
+   */
   public static <T> Map<String, T> beans(Class<T> type) {
     try {
-      return applicationContext.getBeansOfType(type);
+      return listableBeanFactory.getBeansOfType(type);
     } catch (BeansException e) {
       return Collections.emptyMap();
     }
   }
 
+  /**
+   * 获取类在 Spring 容器中注册的所有 Bean name
+   */
   public static <T> List<String> beanNames(Class<T> type) {
     return Arrays.asList(applicationContext.getBeanNamesForType(type));
   }
 
-  public static <T> T register(Class<T> type) {
-    Object bean = listableBeanFactory.createBean(type, AbstractBeanDefinition.AUTOWIRE_BY_TYPE, true);
-    listableBeanFactory.registerSingleton(type.getSimpleName(), bean);
+  /**
+   * 动态实例一个类并注册该 Bean 到 Spring 容器
+   */
+  public static <T> T register(Class<T> type) throws BeansException {
+    String simpleName = type.getSimpleName();
+    String name = simpleName.substring(0, 1).toLowerCase() + simpleName.substring(1);
+    return register(name, type);
+  }
+
+  /**
+   * 动态实例一个类并使用指定的name注册该 Bean 到 Spring 容器
+   */
+  public static <T> T register(@NonNull String name, Class<T> type) throws BeansException {
+    Integer autowireMode = null;
+    Constructor<?>[] constructors = type.getConstructors();
+    for (Constructor<?> constructor : constructors) {
+      if (constructor.getParameterCount() == 0) {
+        autowireMode = AutowireCapableBeanFactory.AUTOWIRE_BY_TYPE;
+        break;
+      }
+    }
+    if (autowireMode == null) {
+      autowireMode = AutowireCapableBeanFactory.AUTOWIRE_CONSTRUCTOR;
+    }
+
+    Object bean = listableBeanFactory.createBean(type, autowireMode, true);
+    listableBeanFactory.registerSingleton(name, bean);
     //noinspection unchecked
     return (T) bean;
   }
 
-  public static <T> T register(@NonNull T bean) {
-    return register(bean, bean.getClass().getSimpleName());
+  /**
+   * 动态注册一个 Bean 到 Spring 容器
+   */
+  public static <T> T register(T bean) {
+    String simpleName = bean.getClass().getSimpleName();
+    String name = simpleName.substring(0, 1).toLowerCase() + simpleName.substring(1);
+    return register(name, bean);
   }
 
-  public static <T> T register(@NonNull T bean, String name) {
+  /**
+   * 动态使用指定的name注册一个 Bean 到 Spring 容器
+   */
+  public static <T> T register(@NonNull String name, T bean) {
     listableBeanFactory.autowireBeanProperties(bean, AutowireCapableBeanFactory.AUTOWIRE_BY_TYPE, true);
     listableBeanFactory.registerSingleton(name, bean);
     return bean;
   }
 
+  /**
+   * 注销一个类在 Spring 容器中注册的 Bean
+   */
+  public static void unregister(Class<?> type) {
+    bean(type).ifPresent(o -> listableBeanFactory.destroyBean(o));
+  }
+
+  /**
+   * 注销在 Spring 容器中注册的 Bean
+   */
+  public static void unregister(String name) {
+    listableBeanFactory.destroyScopedBean(name);
+  }
+
+  /**
+   * 获取 Spring 容器中的 Bean，如果不存在则动态注册并返回该 Bean
+   */
   public static <T> T getOrCreate(Class<T> type) {
     Optional<T> bean = bean(type);
     return bean.orElseGet(() -> register(type));
   }
 
+  /**
+   * 获取 Spring 容器中的 Bean，如果不存在则动态注册并返回该 Bean
+   */
+  public static <T> T getOrCreate(String name, Class<T> type) {
+    Optional<T> bean = bean(name, type);
+    return bean.orElseGet(() -> register(name, type));
+  }
+
+  /**
+   * 获取 Spring Application 名称
+   */
+  public static String applicationName() {
+    return environmentProperty("spring.application.name");
+  }
+
+  /**
+   * 获取当前 Spring 激活的环境配置
+   */
   public static List<String> activatedProfiles() {
     return Arrays.asList(environment.getActiveProfiles());
   }
 
+  /**
+   * 判断当前 Spring 的环境配置是否激活
+   */
   public static boolean isProfileActivated(String name) {
     return activatedProfiles().contains(name);
   }
 
+  /**
+   * 获取 Spring 环境属性
+   */
   public static String environmentProperty(String name, String defaultValue) {
     return environment.getProperty(name, defaultValue);
   }
 
+  /**
+   * 获取 Spring 环境属性
+   */
   public static String environmentProperty(String name) {
     return environmentProperty(name, null);
   }
 
-  public static Set<Class<?>> scanClasses(String pkg, Class<?> type, Class<Annotation>... annotationClasses) {
+  /**
+   * 根据注解扫描符合条件的类
+   */
+  public static Set<Class<?>> scanClassesByAnnotation(String pkg,
+                                                      Class<?> type,
+                                                      Class<Annotation>... annotationClasses) {
     return scanClasses(pkg, provider -> {
       provider.addIncludeFilter(new AssignableTypeFilter(type));
       for (Class<Annotation> annotationClass : annotationClasses) {
@@ -109,6 +237,9 @@ public class Springs {
     });
   }
 
+  /**
+   * 扫描指定包下的类，可在 {@link Consumer} 中自定义扫描条件
+   */
   public static Set<Class<?>> scanClasses(String pkg, Consumer<ClassPathScanningCandidateComponentProvider> consumer) {
     ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(false);
     provider.setEnvironment(environment);
