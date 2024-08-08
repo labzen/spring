@@ -1,4 +1,4 @@
-package cn.labzen.spring.helper;
+package cn.labzen.spring;
 
 import cn.labzen.meta.spring.SpringApplicationContextInitializerOrder;
 import org.springframework.context.ApplicationContextInitializer;

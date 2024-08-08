@@ -1,4 +1,4 @@
-package cn.labzen.spring.helper;
+package cn.labzen.spring;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ListableBeanFactory;
@@ -13,12 +13,14 @@ import org.springframework.core.type.filter.AssignableTypeFilter;
 import org.springframework.lang.NonNull;
 import org.springframework.util.ClassUtils;
 
+import javax.annotation.Nullable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("unused")
 public class Springs {
 
   private static ConfigurableApplicationContext applicationContext;
@@ -212,7 +214,10 @@ public class Springs {
   /**
    * 获取 Spring 环境属性
    */
-  public static String environmentProperty(String name, String defaultValue) {
+  public static String environmentProperty(String name, @Nullable String defaultValue) {
+    if (defaultValue == null) {
+      return environment.getProperty(name);
+    }
     return environment.getProperty(name, defaultValue);
   }
 
@@ -226,6 +231,7 @@ public class Springs {
   /**
    * 根据注解扫描符合条件的类
    */
+  @SafeVarargs
   public static Set<Class<?>> scanClassesByAnnotation(String pkg,
                                                       Class<?> type,
                                                       Class<Annotation>... annotationClasses) {
