@@ -7,13 +7,13 @@
   <parent>
     <artifactId>parent</artifactId>
     <groupId>cn.labzen</groupId>
-    <version>11.9.5</version>
+    <version>11.9.7</version>
     <relativePath/>
   </parent>
 
   <artifactId>spring</artifactId>
   <packaging>jar</packaging>
-  <version>1.2.1</version>
+  <version>1.2.2</version>
   <name>Labzen.Spring</name>
   <description>Labzen Spring - enhancements for custom enterprise projects</description>
 
@@ -45,7 +45,7 @@
   </scm>
 
   <properties>
-    <labzen.meta.version>1.4.4</labzen.meta.version>
+    <labzen.meta.version>1.4.5</labzen.meta.version>
   </properties>
 
   <dependencyManagement>
