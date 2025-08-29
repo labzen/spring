@@ -15,7 +15,6 @@ import org.springframework.util.ClassUtils;
 
 import javax.annotation.Nullable;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -124,22 +123,9 @@ public class Springs {
    * 动态实例一个类并使用指定的name注册该 Bean 到 Spring 容器
    */
   public static <T> T register(@NonNull String name, Class<T> type) throws BeansException {
-    Integer autowireMode = null;
-    Constructor<?>[] constructors = type.getConstructors();
-    for (Constructor<?> constructor : constructors) {
-      if (constructor.getParameterCount() == 0) {
-        autowireMode = AutowireCapableBeanFactory.AUTOWIRE_BY_TYPE;
-        break;
-      }
-    }
-    if (autowireMode == null) {
-      autowireMode = AutowireCapableBeanFactory.AUTOWIRE_CONSTRUCTOR;
-    }
-
-    Object bean = listableBeanFactory.createBean(type, autowireMode, true);
+    T bean = listableBeanFactory.createBean(type);
     listableBeanFactory.registerSingleton(name, bean);
-    //noinspection unchecked
-    return (T) bean;
+    return bean;
   }
 
   /**

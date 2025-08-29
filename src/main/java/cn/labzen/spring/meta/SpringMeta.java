@@ -1,10 +1,10 @@
 package cn.labzen.spring.meta;
 
-import cn.labzen.meta.component.LabzenComponent;
+import cn.labzen.meta.component.DeclaredComponent;
 
 import javax.annotation.Nonnull;
 
-public class SpringMeta implements LabzenComponent {
+public class SpringMeta implements DeclaredComponent {
 
   @Nonnull
   @Override

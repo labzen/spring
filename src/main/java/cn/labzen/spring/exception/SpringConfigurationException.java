@@ -1,27 +1,26 @@
 package cn.labzen.spring.exception;
 
 import cn.labzen.meta.exception.LabzenRuntimeException;
-import org.jetbrains.annotations.NotNull;
 
 public class SpringConfigurationException extends LabzenRuntimeException {
 
-  public SpringConfigurationException(@NotNull String message) {
+  public SpringConfigurationException(String message) {
     super(message);
   }
 
-  public SpringConfigurationException(@NotNull String message, @NotNull Object... arguments) {
+  public SpringConfigurationException(String message, Object... arguments) {
     super(message, arguments);
   }
 
-  public SpringConfigurationException(@NotNull Throwable cause) {
+  public SpringConfigurationException(Throwable cause) {
     super(cause);
   }
 
-  public SpringConfigurationException(@NotNull Throwable cause, @NotNull String message) {
+  public SpringConfigurationException(Throwable cause, String message) {
     super(cause, message);
   }
 
-  public SpringConfigurationException(@NotNull Throwable cause, @NotNull String message, @NotNull Object... arguments) {
+  public SpringConfigurationException(Throwable cause, String message, Object... arguments) {
     super(cause, message, arguments);
   }
 }

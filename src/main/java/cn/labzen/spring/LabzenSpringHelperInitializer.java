@@ -1,6 +1,6 @@
 package cn.labzen.spring;
 
-import cn.labzen.meta.spring.SpringApplicationContextInitializerOrder;
+import cn.labzen.meta.spring.SpringInitializationOrder;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.Ordered;
@@ -11,7 +11,7 @@ public class LabzenSpringHelperInitializer implements ApplicationContextInitiali
 
   @Override
   public int getOrder() {
-    return SpringApplicationContextInitializerOrder.MODULE_SPRING_INITIALIZER_ORDER;
+    return SpringInitializationOrder.MODULE_SPRING_INITIALIZER_ORDER;
   }
 
   @Override

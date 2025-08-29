@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
@@ -74,9 +75,9 @@ public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
     return ecp;
   }
 
+  @SuppressWarnings("HttpUrlsUsage")
   private List<Pair<String, PropertySource<?>>> loadExternalPropertySources(ExternalPropertySourceProperties ecp) {
     String uri = ecp.getUri().toLowerCase();
-    //noinspection HttpUrlsUsage
     isURL = uri.startsWith("http://") || uri.startsWith("https://");
 
     isCryptoSource = cryptoPassword != null && !cryptoPassword.isBlank();
@@ -142,6 +143,7 @@ public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
   /**
    * from spring class: {@link YamlProcessor}
    */
+  @SuppressWarnings("unchecked")
   private Map<String, Object> asMap(Object object) {
     // YAML can have numbers as keys
     Map<String, Object> result = new LinkedHashMap<>();
@@ -151,7 +153,6 @@ public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
       return result;
     }
 
-    //noinspection unchecked
     Map<Object, Object> map = (Map<Object, Object>) object;
     map.forEach((key, value) -> {
       if (value instanceof Map) {
@@ -167,6 +168,7 @@ public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
     return result;
   }
 
+  @SuppressWarnings("unchecked")
   private void buildFlattenedMap(Map<String, Object> result, Map<String, Object> source, String path) {
     source.forEach((key, value) -> {
       if (StringUtils.hasText(path)) {
@@ -176,34 +178,28 @@ public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
           key = path + '.' + key;
         }
       }
-      if (value instanceof String) {
-        result.put(key, value);
-      } else if (value instanceof Map) {
-        // Need a compound key
-        @SuppressWarnings("unchecked")
-        Map<String, Object> map = (Map<String, Object>) value;
-        buildFlattenedMap(result, map, key);
-      } else if (value instanceof Collection) {
-        // Need a compound key
-        @SuppressWarnings("unchecked")
-        Collection<Object> collection = (Collection<Object>) value;
-        if (collection.isEmpty()) {
-          result.put(key, "");
-        } else {
-          int count = 0;
-          for (Object object : collection) {
-            buildFlattenedMap(result, Collections.singletonMap("[" + (count++) + "]", object), key);
+      switch (value) {
+        case String str -> result.put(key, str);
+        case Map<?, ?> map -> buildFlattenedMap(result, (Map<String, Object>) map, key); // Need a compound key
+        case Collection<?> collection -> {
+          // Need a compound key
+          if (collection.isEmpty()) {
+            result.put(key, "");
+          } else {
+            int count = 0;
+            for (Object object : collection) {
+              buildFlattenedMap(result, Collections.singletonMap("[" + (count++) + "]", object), key);
+            }
           }
         }
-      } else {
-        result.put(key, (value != null ? value : ""));
+        default -> result.put(key, value);
       }
     });
   }
 
   private byte[] loadSourceContentFromURL(String value) {
     try {
-      URL url = new URL(value);
+      URL url = URI.create(value).toURL();
       if ("https".equalsIgnoreCase(url.getProtocol())) {
         ignoreSSL();
       }

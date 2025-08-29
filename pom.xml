@@ -7,13 +7,13 @@
   <parent>
     <artifactId>parent</artifactId>
     <groupId>cn.labzen</groupId>
-    <version>11.9.7</version>
+    <version>21.0-SNAPSHOT</version>
     <relativePath/>
   </parent>
 
   <artifactId>spring</artifactId>
   <packaging>jar</packaging>
-  <version>1.2.2</version>
+  <version>1.2.3-SNAPSHOT</version>
   <name>Labzen.Spring</name>
   <description>Labzen Spring - enhancements for custom enterprise projects</description>
 
@@ -45,7 +45,7 @@
   </scm>
 
   <properties>
-    <labzen.meta.version>1.4.5</labzen.meta.version>
+    <labzen.meta.version>1.5.0-SNAPSHOT</labzen.meta.version>
   </properties>
 
   <dependencyManagement>
@@ -64,6 +64,7 @@
       <artifactId>meta</artifactId>
     </dependency>
 
+    <!--suppress VulnerableLibrariesLocal -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-autoconfigure</artifactId>
@@ -108,19 +109,14 @@
         </executions>
         <configuration>
           <parameters>true</parameters>
-          <source>${jdk.version}</source>
-          <target>${jdk.version}</target>
+          <source>${maven.compiler.source}</source>
+          <target>${maven.compiler.target}</target>
           <encoding>${project.build.sourceEncoding}</encoding>
           <annotationProcessorPaths>
             <path>
               <groupId>org.springframework.boot</groupId>
               <artifactId>spring-boot-configuration-processor</artifactId>
-              <version>2.6.7</version>
-            </path>
-            <path>
-              <groupId>org.projectlombok</groupId>
-              <artifactId>lombok</artifactId>
-              <version>1.18.24</version>
+              <version>3.5.4</version>
             </path>
           </annotationProcessorPaths>
         </configuration>
@@ -129,7 +125,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
         <configuration>
-          <source>${jdk.version}</source>
+          <source>${maven.compiler.source}</source>
           <quiet>true</quiet>
           <encoding>${project.build.sourceEncoding}</encoding>
           <charset>${project.build.sourceEncoding}</charset>
