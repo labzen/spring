@@ -11,16 +11,15 @@ import org.springframework.util.StringUtils;
 import org.yaml.snakeyaml.Yaml;
 import oshi.util.tuples.Pair;
 
-import javax.net.ssl.*;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.X509Certificate;
+import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -200,8 +199,11 @@ public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
   private byte[] loadSourceContentFromURL(String value) {
     try {
       URL url = URI.create(value).toURL();
+      
+      // 对于HTTPS连接，使用默认的SSL验证机制
       if ("https".equalsIgnoreCase(url.getProtocol())) {
-        ignoreSSL();
+        // 确保使用默认的SSL上下文，不设置任何自定义的信任管理器
+        SSLContext.getDefault();
       }
 
       try (InputStream inputStream = url.openStream()) {
@@ -224,33 +226,4 @@ public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
       throw new SpringConfigurationException(e, "读取外部Spring配置文件失败：{}", value);
     }
   }
-
-  /**
-   * todo 临时方案
-   */
-  private void ignoreSSL() throws NoSuchAlgorithmException, KeyManagementException {
-    HostnameVerifier hv = (hostname, session) -> true;
-    TrustManager[] trustAllCerts = new TrustManager[]{new IgnoringTrustManager()};
-    SSLContext context = SSLContext.getInstance("SSL");
-    context.init(null, trustAllCerts, null);
-    HttpsURLConnection.setDefaultSSLSocketFactory(context.getSocketFactory());
-    HttpsURLConnection.setDefaultHostnameVerifier(hv);
-  }
-
-  public static class IgnoringTrustManager implements TrustManager, X509TrustManager {
-
-    public X509Certificate[] getAcceptedIssuers() {
-      return null;
-    }
-
-    public void checkServerTrusted(X509Certificate[] certs, String authType) {
-      // Do nothing. Just allow them all.
-    }
-
-    public void checkClientTrusted(X509Certificate[] certs, String authType) {
-      // Do nothing. Just allow them all.
-    }
-
-  }
-
 }

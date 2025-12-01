@@ -9,7 +9,7 @@ public class SpringMeta implements DeclaredComponent {
   @Nonnull
   @Override
   public String description() {
-    return "对基于Spring的企业项目做增强";
+    return "对基于Spring的业务项目做增强";
   }
 
   @Nonnull

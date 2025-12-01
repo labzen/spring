@@ -11,9 +11,9 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.core.type.filter.AssignableTypeFilter;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
 
-import javax.annotation.Nullable;
 import java.lang.annotation.Annotation;
 import java.util.*;
 import java.util.function.Consumer;
@@ -22,14 +22,14 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unused")
 public class Springs {
 
-  private static ConfigurableApplicationContext applicationContext;
-  private static ConfigurableListableBeanFactory listableBeanFactory;
-  private static ConfigurableEnvironment environment;
+  private static volatile ConfigurableApplicationContext applicationContext;
+  private static volatile ConfigurableListableBeanFactory listableBeanFactory;
+  private static volatile ConfigurableEnvironment environment;
 
   private Springs() {
   }
 
-  static void setApplicationContext(ConfigurableApplicationContext applicationContext) {
+  static void setApplicationContext(@NonNull ConfigurableApplicationContext applicationContext) {
     Springs.applicationContext = applicationContext;
     Springs.listableBeanFactory = applicationContext.getBeanFactory();
     Springs.environment = applicationContext.getEnvironment();
@@ -60,6 +60,11 @@ public class Springs {
    * 通过类获取 Spring Bean
    */
   public static <T> Optional<T> bean(Class<T> type) {
+    // 添加参数检查
+    if (type == null) {
+      return Optional.empty();
+    }
+
     try {
       T bean = listableBeanFactory.getBean(type);
       return Optional.of(bean);
@@ -72,6 +77,11 @@ public class Springs {
    * 通过 Bean name 获取 Spring Bean
    */
   public static Optional<?> bean(String name) {
+    // 添加参数检查
+    if (name == null || name.isEmpty()) {
+      return Optional.empty();
+    }
+
     try {
       Object bean = listableBeanFactory.getBean(name);
       return Optional.of(bean);
@@ -84,6 +94,11 @@ public class Springs {
    * 通过类以及 Bean name 精确获取 Spring Bean
    */
   public static <T> Optional<T> bean(String name, Class<T> type) {
+    // 添加参数检查
+    if (name == null || name.isEmpty() || type == null) {
+      return Optional.empty();
+    }
+
     try {
       T bean = listableBeanFactory.getBean(name, type);
       return Optional.of(bean);
@@ -96,6 +111,11 @@ public class Springs {
    * 通过类获取注册的所有 Spring Bean
    */
   public static <T> Map<String, T> beans(Class<T> type) {
+    // 添加参数检查
+    if (type == null) {
+      return Collections.emptyMap();
+    }
+
     try {
       return listableBeanFactory.getBeansOfType(type);
     } catch (BeansException e) {
@@ -107,13 +127,18 @@ public class Springs {
    * 获取类在 Spring 容器中注册的所有 Bean name
    */
   public static <T> List<String> beanNames(Class<T> type) {
+    // 添加参数检查
+    if (type == null) {
+      return Collections.emptyList();
+    }
+
     return Arrays.asList(applicationContext.getBeanNamesForType(type));
   }
 
   /**
    * 动态实例一个类并注册该 Bean 到 Spring 容器
    */
-  public static <T> T register(Class<T> type) throws BeansException {
+  public static <T> T register(@NonNull Class<T> type) throws BeansException {
     String simpleName = type.getSimpleName();
     String name = simpleName.substring(0, 1).toLowerCase() + simpleName.substring(1);
     return register(name, type);
@@ -122,7 +147,12 @@ public class Springs {
   /**
    * 动态实例一个类并使用指定的name注册该 Bean 到 Spring 容器
    */
-  public static <T> T register(@NonNull String name, Class<T> type) throws BeansException {
+  public static <T> T register(@NonNull String name, @NonNull Class<T> type) throws BeansException {
+    // 添加参数检查
+    if (name.isEmpty()) {
+      throw new IllegalArgumentException("Bean name cannot be empty");
+    }
+
     T bean = listableBeanFactory.createBean(type);
     listableBeanFactory.registerSingleton(name, bean);
     return bean;
@@ -131,7 +161,7 @@ public class Springs {
   /**
    * 动态注册一个 Bean 到 Spring 容器
    */
-  public static <T> T register(T bean) {
+  public static <T> T register(@NonNull T bean) {
     String simpleName = bean.getClass().getSimpleName();
     String name = simpleName.substring(0, 1).toLowerCase() + simpleName.substring(1);
     return register(name, bean);
@@ -140,7 +170,12 @@ public class Springs {
   /**
    * 动态使用指定的name注册一个 Bean 到 Spring 容器
    */
-  public static <T> T register(@NonNull String name, T bean) {
+  public static <T> T register(@NonNull String name, @NonNull T bean) {
+    // 添加参数检查
+    if (name.isEmpty()) {
+      throw new IllegalArgumentException("Bean name cannot be empty");
+    }
+
     listableBeanFactory.autowireBeanProperties(bean, AutowireCapableBeanFactory.AUTOWIRE_BY_TYPE, true);
     listableBeanFactory.registerSingleton(name, bean);
     return bean;
@@ -150,6 +185,11 @@ public class Springs {
    * 注销一个类在 Spring 容器中注册的 Bean
    */
   public static void unregister(Class<?> type) {
+    // 添加参数检查
+    if (type == null) {
+      return;
+    }
+
     bean(type).ifPresent(o -> listableBeanFactory.destroyBean(o));
   }
 
@@ -157,13 +197,18 @@ public class Springs {
    * 注销在 Spring 容器中注册的 Bean
    */
   public static void unregister(String name) {
+    // 添加参数检查
+    if (name == null || name.isEmpty()) {
+      return;
+    }
+
     listableBeanFactory.destroyScopedBean(name);
   }
 
   /**
    * 获取 Spring 容器中的 Bean，如果不存在则动态注册并返回该 Bean
    */
-  public static <T> T getOrCreate(Class<T> type) {
+  public static <T> T getOrCreate(@NonNull Class<T> type) {
     Optional<T> bean = bean(type);
     return bean.orElseGet(() -> register(type));
   }
@@ -171,7 +216,12 @@ public class Springs {
   /**
    * 获取 Spring 容器中的 Bean，如果不存在则动态注册并返回该 Bean
    */
-  public static <T> T getOrCreate(String name, Class<T> type) {
+  public static <T> T getOrCreate(@NonNull String name, @NonNull Class<T> type) {
+    // 添加参数检查
+    if (name.isEmpty()) {
+      throw new IllegalArgumentException("Bean name cannot be empty");
+    }
+
     Optional<T> bean = bean(name, type);
     return bean.orElseGet(() -> register(name, type));
   }
@@ -194,6 +244,11 @@ public class Springs {
    * 判断当前 Spring 的环境配置是否激活
    */
   public static boolean isProfileActivated(String name) {
+    // 添加参数检查
+    if (name == null || name.isEmpty()) {
+      return false;
+    }
+
     return activatedProfiles().contains(name);
   }
 
@@ -201,6 +256,11 @@ public class Springs {
    * 获取 Spring 环境属性
    */
   public static String environmentProperty(String name, @Nullable String defaultValue) {
+    // 添加参数检查
+    if (name == null || name.isEmpty()) {
+      return defaultValue;
+    }
+
     if (defaultValue == null) {
       return environment.getProperty(name);
     }
@@ -221,6 +281,11 @@ public class Springs {
   public static Set<Class<?>> scanClassesByAnnotation(String pkg,
                                                       Class<?> type,
                                                       Class<Annotation>... annotationClasses) {
+    // 添加参数检查
+    if (pkg == null || pkg.isEmpty() || type == null || annotationClasses == null) {
+      return Collections.emptySet();
+    }
+
     return scanClasses(pkg, provider -> {
       provider.addIncludeFilter(new AssignableTypeFilter(type));
       for (Class<Annotation> annotationClass : annotationClasses) {
@@ -233,6 +298,11 @@ public class Springs {
    * 扫描指定包下的类，可在 {@link Consumer} 中自定义扫描条件
    */
   public static Set<Class<?>> scanClasses(String pkg, Consumer<ClassPathScanningCandidateComponentProvider> consumer) {
+    // 添加参数检查
+    if (pkg == null || pkg.isEmpty() || consumer == null) {
+      return Collections.emptySet();
+    }
+
     ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(false);
     provider.setEnvironment(environment);
     provider.setResourceLoader(applicationContext);
@@ -247,4 +317,5 @@ public class Springs {
       }
     }).collect(Collectors.toSet());
   }
+
 }
