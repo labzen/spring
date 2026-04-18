@@ -7,13 +7,13 @@
   <parent>
     <artifactId>parent</artifactId>
     <groupId>cn.labzen</groupId>
-    <version>21.0-SNAPSHOT</version>
+    <version>21.1</version>
     <relativePath/>
   </parent>
 
   <artifactId>spring</artifactId>
   <packaging>jar</packaging>
-  <version>1.2.3-SNAPSHOT</version>
+  <version>1.2.3</version>
   <name>Labzen.Spring</name>
   <description>Labzen Spring - enhancements for custom enterprise projects</description>
 
@@ -45,7 +45,7 @@
   </scm>
 
   <properties>
-    <labzen.meta.version>1.5.0-SNAPSHOT</labzen.meta.version>
+    <labzen.meta.version>1.5.0</labzen.meta.version>
   </properties>
 
   <dependencyManagement>
@@ -81,32 +81,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <executions>
-          <!-- Replacing default-compile as it is treated specially by maven -->
-          <execution>
-            <id>default-compile</id>
-            <phase>none</phase>
-          </execution>
-          <!-- Replacing default-testCompile as it is treated specially by maven -->
-          <execution>
-            <id>default-testCompile</id>
-            <phase>none</phase>
-          </execution>
-          <execution>
-            <id>java-compile</id>
-            <phase>compile</phase>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>java-test-compile</id>
-            <phase>test-compile</phase>
-            <goals>
-              <goal>testCompile</goal>
-            </goals>
-          </execution>
-        </executions>
         <configuration>
           <parameters>true</parameters>
           <source>${maven.compiler.source}</source>
@@ -120,31 +94,6 @@
             </path>
           </annotationProcessorPaths>
         </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <configuration>
-          <source>${maven.compiler.source}</source>
-          <quiet>true</quiet>
-          <encoding>${project.build.sourceEncoding}</encoding>
-          <charset>${project.build.sourceEncoding}</charset>
-          <docencoding>${project.build.sourceEncoding}</docencoding>
-          <linksource>true</linksource>
-          <failOnError>false</failOnError>
-          <additionalJOptions>
-            <!-- 忽略自定义标签的错误 -->
-            <additionalJOption>-Xdoclint:none</additionalJOption>
-          </additionalJOptions>
-        </configuration>
-        <executions>
-          <execution>
-            <id>attach-javadocs</id>
-            <goals>
-              <goal>${project.packaging}</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
 
       <plugin>
