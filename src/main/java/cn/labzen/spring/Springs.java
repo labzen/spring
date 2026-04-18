@@ -4,6 +4,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
@@ -27,6 +28,16 @@ public class Springs {
   private static volatile ConfigurableEnvironment environment;
 
   private Springs() {
+  }
+
+  /**
+   * 检查 Spring 上下文是否已初始化
+   */
+  private static void assertInitialized() {
+    if (applicationContext == null) {
+      throw new IllegalStateException("Spring ApplicationContext has not been initialized. " +
+                                      "Ensure LabzenSpringHelperInitializer is registered in spring.factories.");
+    }
   }
 
   static void setApplicationContext(@NonNull ConfigurableApplicationContext applicationContext) {
@@ -53,6 +64,7 @@ public class Springs {
    * 获取 Spring {@link ApplicationContext} 的 {@link ClassLoader}
    */
   public static ClassLoader getSpringClassLoader() {
+    assertInitialized();
     return applicationContext.getClassLoader();
   }
 
@@ -146,6 +158,7 @@ public class Springs {
 
   /**
    * 动态实例一个类并使用指定的name注册该 Bean 到 Spring 容器
+   * Bean名称基于类的全限定名生成，避免同名冲突
    */
   public static <T> T register(@NonNull String name, @NonNull Class<T> type) throws BeansException {
     // 添加参数检查
@@ -160,10 +173,13 @@ public class Springs {
 
   /**
    * 动态注册一个 Bean 到 Spring 容器
+   * Bean名称基于类的全限定名生成，避免同名冲突
    */
   public static <T> T register(@NonNull T bean) {
+    String fullName = bean.getClass().getName();
     String simpleName = bean.getClass().getSimpleName();
-    String name = simpleName.substring(0, 1).toLowerCase() + simpleName.substring(1);
+    // 使用全限定名的hashCode作为唯一标识，避免简单类名冲突
+    String name = simpleName + "-" + Math.abs(fullName.hashCode());
     return register(name, bean);
   }
 
@@ -195,6 +211,7 @@ public class Springs {
 
   /**
    * 注销在 Spring 容器中注册的 Bean
+   * 根据Bean类型选择合适的销毁方式
    */
   public static void unregister(String name) {
     // 添加参数检查
@@ -202,21 +219,45 @@ public class Springs {
       return;
     }
 
-    listableBeanFactory.destroyScopedBean(name);
+    // 检查Bean是否存在
+    if (!listableBeanFactory.containsSingleton(name)) {
+      return;
+    }
+
+    // 通过 AutowireCapableBeanFactory 获取 SingletonBeanRegistry 功能
+    // AutowireCapableBeanFactory 扩展了 SingletonBeanRegistry
+    if (listableBeanFactory instanceof DefaultListableBeanFactory factory) {
+      factory.destroySingleton(name);
+      return;
+    }
+
+    // 降级方案：使用 destroyBean
+    try {
+      Object bean = listableBeanFactory.getBean(name);
+      listableBeanFactory.destroyBean(name, bean);
+    } catch (BeansException ignored) {
+      // 忽略销毁错误
+    }
   }
 
   /**
    * 获取 Spring 容器中的 Bean，如果不存在则动态注册并返回该 Bean
+   * 注意：此方法非线程安全，建议在单线程或加锁环境下使用
    */
   public static <T> T getOrCreate(@NonNull Class<T> type) {
+    assertInitialized();
+
     Optional<T> bean = bean(type);
     return bean.orElseGet(() -> register(type));
   }
 
   /**
    * 获取 Spring 容器中的 Bean，如果不存在则动态注册并返回该 Bean
+   * 注意：此方法非线程安全，建议在单线程或加锁环境下使用
    */
   public static <T> T getOrCreate(@NonNull String name, @NonNull Class<T> type) {
+    assertInitialized();
+
     // 添加参数检查
     if (name.isEmpty()) {
       throw new IllegalArgumentException("Bean name cannot be empty");
@@ -230,6 +271,7 @@ public class Springs {
    * 获取 Spring Application 名称
    */
   public static String applicationName() {
+    assertInitialized();
     return environmentProperty("spring.application.name");
   }
 
@@ -237,6 +279,7 @@ public class Springs {
    * 获取当前 Spring 激活的环境配置
    */
   public static List<String> activatedProfiles() {
+    assertInitialized();
     return Arrays.asList(environment.getActiveProfiles());
   }
 
@@ -275,7 +318,8 @@ public class Springs {
   }
 
   /**
-   * 根据注解扫描符合条件的类
+   * 根据注解扫描符合条件的类，可在 {@link Consumer} 中自定义扫描条件
+   * 扫描过程中遇到无法加载的类时会跳过并记录警告
    */
   @SafeVarargs
   public static Set<Class<?>> scanClassesByAnnotation(String pkg,
@@ -296,6 +340,7 @@ public class Springs {
 
   /**
    * 扫描指定包下的类，可在 {@link Consumer} 中自定义扫描条件
+   * 扫描过程中遇到无法加载的类时会跳过并记录警告
    */
   public static Set<Class<?>> scanClasses(String pkg, Consumer<ClassPathScanningCandidateComponentProvider> consumer) {
     // 添加参数检查
@@ -303,19 +348,27 @@ public class Springs {
       return Collections.emptySet();
     }
 
+    assertInitialized();
+
     ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(false);
     provider.setEnvironment(environment);
     provider.setResourceLoader(applicationContext);
 
     consumer.accept(provider);
     return provider.findCandidateComponents(pkg).stream().map(beanDefinition -> {
-      try {
-        return ClassUtils.forName(Objects.requireNonNull(beanDefinition.getBeanClassName()),
-            applicationContext.getClassLoader());
-      } catch (ClassNotFoundException e) {
-        throw new RuntimeException(e);
+      String className = beanDefinition.getBeanClassName();
+      if (className == null) {
+        return null;
       }
-    }).collect(Collectors.toSet());
+      try {
+        return ClassUtils.forName(className, applicationContext.getClassLoader());
+      } catch (ClassNotFoundException e) {
+        // 记录警告并跳过无法加载的类，不中断整个扫描过程
+        org.slf4j.LoggerFactory.getLogger(Springs.class)
+                               .warn("无法加载扫描到的类: {}, 原因: {}", className, e.getMessage());
+        return null;
+      }
+    }).filter(Objects::nonNull).collect(Collectors.toSet());
   }
 
 }

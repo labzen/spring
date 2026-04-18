@@ -11,7 +11,6 @@ import org.springframework.util.StringUtils;
 import org.yaml.snakeyaml.Yaml;
 import oshi.util.tuples.Pair;
 
-import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import java.io.File;
 import java.io.FileInputStream;
@@ -19,7 +18,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
-import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -199,7 +197,7 @@ public class ExternalPropertySourcesLoader implements EnvironmentPostProcessor {
   private byte[] loadSourceContentFromURL(String value) {
     try {
       URL url = URI.create(value).toURL();
-      
+
       // 对于HTTPS连接，使用默认的SSL验证机制
       if ("https".equalsIgnoreCase(url.getProtocol())) {
         // 确保使用默认的SSL上下文，不设置任何自定义的信任管理器

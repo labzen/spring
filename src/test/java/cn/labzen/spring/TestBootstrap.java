@@ -2,13 +2,10 @@ package cn.labzen.spring;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.event.ApplicationContextInitializedEvent;
-import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.EnvironmentAware;
-import org.springframework.context.event.ContextStartedEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
+
+import java.util.Optional;
 
 @SpringBootApplication
 public class TestBootstrap implements EnvironmentAware {
@@ -23,7 +20,16 @@ public class TestBootstrap implements EnvironmentAware {
   public void setEnvironment(Environment environment) {
     this.environment = environment;
 
-    System.out.println("加载的外部配置项 server.port: " + environment.getProperty("server.port"));
-    System.out.println("加载的外部配置项 server.shutdown: " + environment.getProperty("server.shutdown"));
+    // 使用环境变量或系统属性获取敏感配置，避免硬编码
+    String configUri = Optional.ofNullable(System.getenv("LABZEN_CONFIG_URI"))
+        .orElseGet(() -> Optional.ofNullable(System.getProperty("labzen.config.uri"))
+            .orElse("/Users/dean/Working/labzen/configs/spring/crypto"));
+    String configPassword = Optional.ofNullable(System.getenv("LABZEN_CONFIG_PASSWORD"))
+        .orElseGet(() -> System.getProperty("labzen.config.password", ""));
+
+    System.out.println("加载的外部配置项 config.uri: " + configUri);
+    if (!configPassword.isEmpty()) {
+      System.out.println("加载的外部配置项 config.password: ****");
+    }
   }
 }

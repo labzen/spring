@@ -16,15 +16,13 @@ public class ExternalPropertySourcesInfoPrinter implements ApplicationListener<A
 
   @Override
   public void onApplicationEvent(@NonNull ApplicationEvent e) {
-    if (e instanceof ApplicationPreparedEvent) {
-      ApplicationPreparedEvent event = (ApplicationPreparedEvent) e;
+    if (e instanceof ApplicationPreparedEvent event) {
       ConfigurableEnvironment environment = event.getApplicationContext().getEnvironment();
 
       MutablePropertySources propertySources = environment.getPropertySources();
       for (PropertySource<?> propertySource : propertySources) {
-        if (propertySource instanceof ExternalMapPropertySource) {
-          ExternalMapPropertySource emps = (ExternalMapPropertySource) propertySource;
-          logger.info("已加载外部配置文件 Profile[{}]：{}", emps.getProfile(), emps.getName());
+        if (propertySource instanceof ExternalMapPropertySource source) {
+          logger.info("已加载外部配置文件 Profile[{}]：{}", source.getProfile(), source.getName());
         }
       }
     }

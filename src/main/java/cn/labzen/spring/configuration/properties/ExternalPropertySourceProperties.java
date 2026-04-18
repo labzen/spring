@@ -22,7 +22,7 @@ public class ExternalPropertySourceProperties {
    */
   private String password = null;
   /**
-   * 激活的Profile，也可通过环境变量传入，例如：' mvn -jar xxx.jar --spring.profiles.active=devel '
+   * 激活的Profile，也可通过环境变量传入，例如：' mvn -jar xxx.jar --spring.profiles.active=dev '
    */
   private List<String> activeProfiles;
 
