@@ -3,12 +3,10 @@ package cn.labzen.spring;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
-import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.core.type.filter.AssignableTypeFilter;
 import org.springframework.lang.NonNull;
@@ -24,8 +22,6 @@ import java.util.stream.Collectors;
 public class Springs {
 
   private static volatile ConfigurableApplicationContext applicationContext;
-  private static volatile ConfigurableListableBeanFactory listableBeanFactory;
-  private static volatile ConfigurableEnvironment environment;
 
   private Springs() {
   }
@@ -42,8 +38,6 @@ public class Springs {
 
   static void setApplicationContext(@NonNull ConfigurableApplicationContext applicationContext) {
     Springs.applicationContext = applicationContext;
-    Springs.listableBeanFactory = applicationContext.getBeanFactory();
-    Springs.environment = applicationContext.getEnvironment();
   }
 
   /**
@@ -57,7 +51,7 @@ public class Springs {
    * 获取 {@link ListableBeanFactory}
    */
   public static ListableBeanFactory getListableBeanFactory() {
-    return listableBeanFactory;
+    return applicationContext.getBeanFactory();
   }
 
   /**
@@ -78,7 +72,7 @@ public class Springs {
     }
 
     try {
-      T bean = listableBeanFactory.getBean(type);
+      T bean = applicationContext.getBeanFactory().getBean(type);
       return Optional.of(bean);
     } catch (BeansException e) {
       return Optional.empty();
@@ -95,7 +89,7 @@ public class Springs {
     }
 
     try {
-      Object bean = listableBeanFactory.getBean(name);
+      Object bean = applicationContext.getBeanFactory().getBean(name);
       return Optional.of(bean);
     } catch (BeansException e) {
       return Optional.empty();
@@ -112,7 +106,7 @@ public class Springs {
     }
 
     try {
-      T bean = listableBeanFactory.getBean(name, type);
+      T bean = applicationContext.getBeanFactory().getBean(name, type);
       return Optional.of(bean);
     } catch (BeansException e) {
       return Optional.empty();
@@ -129,7 +123,7 @@ public class Springs {
     }
 
     try {
-      return listableBeanFactory.getBeansOfType(type);
+      return applicationContext.getBeanFactory().getBeansOfType(type);
     } catch (BeansException e) {
       return Collections.emptyMap();
     }
@@ -144,6 +138,7 @@ public class Springs {
       return Collections.emptyList();
     }
 
+    assertInitialized();
     return Arrays.asList(applicationContext.getBeanNamesForType(type));
   }
 
@@ -151,7 +146,7 @@ public class Springs {
    * 动态实例一个类并注册该 Bean 到 Spring 容器
    */
   public static <T> T register(@NonNull Class<T> type) throws BeansException {
-    String simpleName = type.getSimpleName();
+    String simpleName = type.getName();
     String name = simpleName.substring(0, 1).toLowerCase() + simpleName.substring(1);
     return register(name, type);
   }
@@ -166,8 +161,8 @@ public class Springs {
       throw new IllegalArgumentException("Bean name cannot be empty");
     }
 
-    T bean = listableBeanFactory.createBean(type);
-    listableBeanFactory.registerSingleton(name, bean);
+    T bean = applicationContext.getBeanFactory().createBean(type);
+    applicationContext.getBeanFactory().registerSingleton(name, bean);
     return bean;
   }
 
@@ -192,8 +187,8 @@ public class Springs {
       throw new IllegalArgumentException("Bean name cannot be empty");
     }
 
-    listableBeanFactory.autowireBeanProperties(bean, AutowireCapableBeanFactory.AUTOWIRE_BY_TYPE, true);
-    listableBeanFactory.registerSingleton(name, bean);
+    applicationContext.getBeanFactory().autowireBeanProperties(bean, AutowireCapableBeanFactory.AUTOWIRE_BY_TYPE, true);
+    applicationContext.getBeanFactory().registerSingleton(name, bean);
     return bean;
   }
 
@@ -206,7 +201,7 @@ public class Springs {
       return;
     }
 
-    bean(type).ifPresent(o -> listableBeanFactory.destroyBean(o));
+    bean(type).ifPresent(o -> applicationContext.getBeanFactory().destroyBean(o));
   }
 
   /**
@@ -220,21 +215,21 @@ public class Springs {
     }
 
     // 检查Bean是否存在
-    if (!listableBeanFactory.containsSingleton(name)) {
+    if (!applicationContext.getBeanFactory().containsSingleton(name)) {
       return;
     }
 
     // 通过 AutowireCapableBeanFactory 获取 SingletonBeanRegistry 功能
     // AutowireCapableBeanFactory 扩展了 SingletonBeanRegistry
-    if (listableBeanFactory instanceof DefaultListableBeanFactory factory) {
+    if (applicationContext.getBeanFactory() instanceof DefaultListableBeanFactory factory) {
       factory.destroySingleton(name);
       return;
     }
 
     // 降级方案：使用 destroyBean
     try {
-      Object bean = listableBeanFactory.getBean(name);
-      listableBeanFactory.destroyBean(name, bean);
+      Object bean = applicationContext.getBeanFactory().getBean(name);
+      applicationContext.getBeanFactory().destroyBean(name, bean);
     } catch (BeansException ignored) {
       // 忽略销毁错误
     }
@@ -244,7 +239,7 @@ public class Springs {
    * 获取 Spring 容器中的 Bean，如果不存在则动态注册并返回该 Bean
    * 注意：此方法非线程安全，建议在单线程或加锁环境下使用
    */
-  public static <T> T getOrCreate(@NonNull Class<T> type) {
+  public static synchronized <T> T getOrCreate(@NonNull Class<T> type) {
     assertInitialized();
 
     Optional<T> bean = bean(type);
@@ -280,7 +275,7 @@ public class Springs {
    */
   public static List<String> activatedProfiles() {
     assertInitialized();
-    return Arrays.asList(environment.getActiveProfiles());
+    return Arrays.asList(applicationContext.getEnvironment().getActiveProfiles());
   }
 
   /**
@@ -304,10 +299,11 @@ public class Springs {
       return defaultValue;
     }
 
+    assertInitialized();
     if (defaultValue == null) {
-      return environment.getProperty(name);
+      return applicationContext.getEnvironment().getProperty(name);
     }
-    return environment.getProperty(name, defaultValue);
+    return applicationContext.getEnvironment().getProperty(name, defaultValue);
   }
 
   /**
@@ -351,7 +347,7 @@ public class Springs {
     assertInitialized();
 
     ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(false);
-    provider.setEnvironment(environment);
+    provider.setEnvironment(applicationContext.getEnvironment());
     provider.setResourceLoader(applicationContext);
 
     consumer.accept(provider);

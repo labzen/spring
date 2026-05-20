@@ -10,6 +10,10 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 
+/**
+ * todo 使用 algorithm 模块来负责加解密，相关的秘钥等信息，走 meta 配置
+ */
+@Deprecated
 public class Crypto {
 
   private static final String ALGORITHM = "AES/CBC/PKCS5Padding";

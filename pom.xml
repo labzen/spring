@@ -7,7 +7,7 @@
   <parent>
     <artifactId>parent</artifactId>
     <groupId>cn.labzen</groupId>
-    <version>21.1</version>
+    <version>21.2</version>
     <relativePath/>
   </parent>
 
@@ -45,7 +45,7 @@
   </scm>
 
   <properties>
-    <labzen.meta.version>1.5.0</labzen.meta.version>
+    <labzen.meta.version>1.5.1</labzen.meta.version>
   </properties>
 
   <dependencyManagement>
